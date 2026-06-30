@@ -128,11 +128,33 @@ def forecast(request):
 
 
 def alerts(request):
-    all_alerts = AlertLog.objects.order_by('-triggered_at')[:50]
-    return render(request, 'weather_ai/alerts.html', {
-        'page':       'alerts',
-        'all_alerts': all_alerts,
-    })
+    from services.anomaly_service import run_detection, get_alert_summary
+
+    # Auto-run detection if no alerts exist yet
+    if not AlertLog.objects.exists():
+        run_detection(scan_hours=168)   # scan full 7-day history on first visit
+
+    severity_filter = request.GET.get('severity', '')
+    qs = AlertLog.objects.select_related('weather_reading').order_by('-triggered_at')
+    if severity_filter:
+        qs = qs.filter(severity=severity_filter)
+
+    summary = get_alert_summary()
+
+    context = {
+        'page':             'alerts',
+        'all_alerts':       qs[:100],
+        'summary':          summary,
+        'severity_filter':  severity_filter,
+        'severity_choices': [
+            ('',         'All'),
+            ('critical', 'Critical'),
+            ('high',     'High'),
+            ('warning',  'Warning'),
+            ('info',     'Info'),
+        ],
+    }
+    return render(request, 'weather_ai/alerts.html', context)
 
 
 def history(request):

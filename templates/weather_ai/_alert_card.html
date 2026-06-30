@@ -1,0 +1,45 @@
+<!-- _alert_card.html — rendered with: border, icon_color, icon, bg variables -->
+<div style="display:flex;align-items:flex-start;gap:14px;padding:16px 18px;border-radius:14px;background:{{ bg }};border:1px solid {{ border }};transition:background 0.2s;"
+     onmouseover="this.style.background='rgba(255,255,255,0.05)'"
+     onmouseout="this.style.background='{{ bg }}'">
+
+    <!-- Icon -->
+    <div style="width:38px;height:38px;border-radius:10px;background:{{ bg }};border:1px solid {{ border }};display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">
+        <i class="{{ icon }}" style="color:{{ icon_color }};font-size:1rem;"></i>
+    </div>
+
+    <!-- Content -->
+    <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:5px;">
+            <span style="font-size:0.875rem;font-weight:600;color:rgba(255,255,255,0.88);">{{ alert.title }}</span>
+            <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+                <span class="badge badge-{{ alert.severity }}">{{ alert.get_severity_display }}</span>
+                {% if not alert.is_active %}
+                <span class="badge" style="background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.3);border-color:rgba(255,255,255,0.08);">Resolved</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <p style="font-size:0.78rem;color:rgba(255,255,255,0.45);line-height:1.55;margin-bottom:8px;">{{ alert.description }}</p>
+
+        <!-- Meta row -->
+        <div style="display:flex;align-items:center;gap:18px;font-size:0.7rem;color:rgba(255,255,255,0.28);flex-wrap:wrap;">
+            <span><i class="fas fa-clock" style="margin-right:4px;"></i>{{ alert.triggered_at|date:"d M Y, H:i" }} UTC</span>
+            <span><i class="fas fa-tag" style="margin-right:4px;"></i>{{ alert.get_alert_type_display }}</span>
+            <span style="display:flex;align-items:center;gap:5px;">
+                <i class="fas fa-chart-scatter" style="margin-right:2px;"></i>Score:
+                <span style="color:{{ icon_color }};font-weight:600;">{{ alert.anomaly_score }}</span>
+            </span>
+            {% if alert.weather_reading %}
+            <span>
+                <i class="fas fa-thermometer-half" style="margin-right:4px;"></i>
+                {{ alert.weather_reading.temperature|floatformat:1 }}°C &nbsp;
+                <i class="fas fa-droplet" style="margin-right:2px;"></i>
+                {{ alert.weather_reading.humidity|floatformat:0 }}% &nbsp;
+                <i class="fas fa-gauge" style="margin-right:2px;"></i>
+                {{ alert.weather_reading.pressure|floatformat:0 }} hPa
+            </span>
+            {% endif %}
+        </div>
+    </div>
+</div>
