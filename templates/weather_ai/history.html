@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% block title %}History{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:2rem;">
+    <h1 style="font-size:1.5rem;font-weight:700;color:#fff;margin-bottom:4px;">Weather History</h1>
+    <p style="color:rgba(255,255,255,0.4);font-size:0.875rem;">Last 100 stored readings</p>
+</div>
+
+<div class="glass rounded-2xl" style="padding:1.25rem;">
+    <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;font-size:0.8rem;">
+            <thead>
+                <tr style="color:rgba(255,255,255,0.28);border-bottom:1px solid rgba(255,255,255,0.07);">
+                    <th style="text-align:left;padding-bottom:12px;font-weight:500;">Timestamp</th>
+                    <th style="text-align:right;padding-bottom:12px;font-weight:500;">Temp (°C)</th>
+                    <th style="text-align:right;padding-bottom:12px;font-weight:500;">Humidity (%)</th>
+                    <th style="text-align:right;padding-bottom:12px;font-weight:500;">Pressure (hPa)</th>
+                    <th style="text-align:right;padding-bottom:12px;font-weight:500;">Rain (mm)</th>
+                    <th style="text-align:right;padding-bottom:12px;font-weight:500;">Wind (km/h)</th>
+                    <th style="text-align:left;padding-bottom:12px;font-weight:500;padding-left:16px;">Condition</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in readings %}
+                <tr class="data-row">
+                    <td style="padding:9px 0;color:rgba(255,255,255,0.5);">{{ r.timestamp|date:"d M, H:i" }}</td>
+                    <td style="padding:9px 0;text-align:right;font-weight:600;color:#93c5fd;">{{ r.temperature|floatformat:1 }}</td>
+                    <td style="padding:9px 0;text-align:right;color:#67e8f9;">{{ r.humidity|floatformat:0 }}</td>
+                    <td style="padding:9px 0;text-align:right;color:#c4b5fd;">{{ r.pressure|floatformat:0 }}</td>
+                    <td style="padding:9px 0;text-align:right;color:#fda4af;">{{ r.rain|floatformat:1 }}</td>
+                    <td style="padding:9px 0;text-align:right;color:#6ee7b7;">{{ r.wind_speed|floatformat:1 }}</td>
+                    <td style="padding:9px 0;padding-left:16px;color:rgba(255,255,255,0.4);font-size:0.72rem;">{{ r.weather_description }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" style="padding:3rem;text-align:center;color:rgba(255,255,255,0.25);">No historical data. Run <code style="color:#60a5fa;">python manage.py fetch_weather --history</code></td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,424 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+
+{% if not latest %}
+<!-- ── Empty state ─────────────────────────────────── -->
+<div class="glass rounded-2xl p-16 text-center" style="margin-top:4rem;">
+    <div style="font-size:4rem;margin-bottom:1rem;">🌤️</div>
+    <h2 style="font-size:1.25rem;font-weight:600;color:rgba(255,255,255,0.7);margin-bottom:0.5rem;">No weather data yet</h2>
+    <p style="color:rgba(255,255,255,0.35);font-size:0.875rem;margin-bottom:1.5rem;">Run this command to seed the database:</p>
+    <code style="background:rgba(0,0,0,0.4);color:#60a5fa;padding:10px 20px;border-radius:10px;font-family:monospace;font-size:0.85rem;">
+        python manage.py fetch_weather --history
+    </code>
+</div>
+
+{% else %}
+
+<!-- ═══════════════════════════════════════════════════
+     HERO
+═══════════════════════════════════════════════════ -->
+<div class="glass rounded-2xl p-8 mb-6" style="position:relative;overflow:hidden;">
+    <!-- decorative blobs inside card -->
+    <div style="position:absolute;top:-60px;right:-60px;width:280px;height:280px;border-radius:50%;background:radial-gradient(circle,rgba(59,130,246,0.13) 0%,transparent 70%);pointer-events:none;"></div>
+    <div style="position:absolute;bottom:-40px;left:-40px;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,rgba(139,92,246,0.09) 0%,transparent 70%);pointer-events:none;"></div>
+
+    <div style="position:relative;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:2rem;">
+
+        <!-- Left: big weather display -->
+        <div>
+            <div style="display:flex;align-items:center;gap:8px;color:rgba(255,255,255,0.45);font-size:0.8rem;margin-bottom:1rem;">
+                <i class="fas fa-location-dot" style="color:#60a5fa;"></i>
+                <span>{{ latest.location }}</span>
+                <span style="width:4px;height:4px;border-radius:50%;background:rgba(255,255,255,0.2);display:inline-block;"></span>
+                <span>{{ latest.timestamp|date:"l, d M Y" }}</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:1.5rem;">
+                <span style="font-size:5rem;line-height:1;">{{ weather_icon }}</span>
+                <div>
+                    <div class="grad-text" style="font-size:5rem;font-weight:900;line-height:1;letter-spacing:-0.04em;">
+                        {{ latest.temperature|floatformat:1 }}<span style="font-size:2.2rem;font-weight:300;color:rgba(255,255,255,0.3);">°C</span>
+                    </div>
+                    <div style="color:rgba(255,255,255,0.55);font-size:1.05rem;margin-top:0.4rem;font-weight:500;">{{ weather_desc }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: meta info -->
+        <div style="display:flex;flex-direction:column;gap:0.75rem;font-size:0.82rem;">
+            <div style="display:flex;align-items:center;gap:8px;color:rgba(255,255,255,0.45);">
+                <i class="fas fa-clock" style="color:rgba(96,165,250,0.6);width:16px;text-align:center;"></i>
+                <span>Last update: {{ latest.timestamp|date:"H:i" }} UTC</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;color:rgba(255,255,255,0.45);">
+                <i class="fas fa-database" style="color:rgba(167,139,250,0.6);width:16px;text-align:center;"></i>
+                <span>{{ total_readings }} readings in database</span>
+            </div>
+            {% if trend == 'rising' %}
+            <div style="display:flex;align-items:center;gap:8px;color:#6ee7b7;">
+                <i class="fas fa-arrow-trend-up" style="width:16px;text-align:center;"></i>
+                <span>Temperature rising</span>
+            </div>
+            {% elif trend == 'falling' %}
+            <div style="display:flex;align-items:center;gap:8px;color:#93c5fd;">
+                <i class="fas fa-arrow-trend-down" style="width:16px;text-align:center;"></i>
+                <span>Temperature falling</span>
+            </div>
+            {% else %}
+            <div style="display:flex;align-items:center;gap:8px;color:rgba(255,255,255,0.3);">
+                <i class="fas fa-minus" style="width:16px;text-align:center;"></i>
+                <span>Temperature stable</span>
+            </div>
+            {% endif %}
+            {% if alert_count %}
+            <div style="display:flex;align-items:center;gap:8px;color:#fca5a5;">
+                <i class="fas fa-triangle-exclamation" style="width:16px;text-align:center;"></i>
+                <span>{{ alert_count }} active alert{{ alert_count|pluralize }}</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     STAT CARDS
+═══════════════════════════════════════════════════ -->
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-bottom:1.5rem;">
+
+    <!-- Temperature -->
+    <div class="glass glass-lift rounded-2xl glow-blue" style="padding:1.25rem;">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1rem;">
+            <div style="width:40px;height:40px;border-radius:12px;background:rgba(59,130,246,0.15);display:flex;align-items:center;justify-content:center;">
+                <i class="fas fa-thermometer-half" style="color:#60a5fa;"></i>
+            </div>
+            <span style="font-size:0.68rem;font-weight:600;color:rgba(255,255,255,0.28);text-transform:uppercase;letter-spacing:0.08em;">Temperature</span>
+        </div>
+        <div style="font-size:2.4rem;font-weight:800;color:#fff;line-height:1;margin-bottom:0.4rem;">{{ latest.temperature|floatformat:1 }}<span style="font-size:1.1rem;font-weight:400;color:rgba(255,255,255,0.3);">°C</span></div>
+        <div style="font-size:0.72rem;color:rgba(255,255,255,0.35);display:flex;gap:10px;flex-wrap:wrap;">
+            <span style="color:#93c5fd;">↓ {{ temp_min }}°</span>
+            <span style="color:#fca5a5;">↑ {{ temp_max }}°</span>
+            <span>avg {{ temp_avg }}°</span>
+        </div>
+    </div>
+
+    <!-- Humidity -->
+    <div class="glass glass-lift rounded-2xl glow-cyan" style="padding:1.25rem;">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1rem;">
+            <div style="width:40px;height:40px;border-radius:12px;background:rgba(6,182,212,0.15);display:flex;align-items:center;justify-content:center;">
+                <i class="fas fa-droplet" style="color:#22d3ee;"></i>
+            </div>
+            <span style="font-size:0.68rem;font-weight:600;color:rgba(255,255,255,0.28);text-transform:uppercase;letter-spacing:0.08em;">Humidity</span>
+        </div>
+        <div style="font-size:2.4rem;font-weight:800;color:#fff;line-height:1;margin-bottom:0.75rem;">{{ latest.humidity|floatformat:0 }}<span style="font-size:1.1rem;font-weight:400;color:rgba(255,255,255,0.3);">%</span></div>
+        <div class="progress-bar">
+            <div class="progress-fill" style="width:{{ latest.humidity|floatformat:0 }}%;background:linear-gradient(90deg,#0891b2,#06b6d4);"></div>
+        </div>
+        <div style="font-size:0.7rem;color:rgba(255,255,255,0.3);margin-top:0.4rem;">
+            {% if latest.humidity < 30 %}Dry
+            {% elif latest.humidity < 60 %}Comfortable
+            {% elif latest.humidity < 80 %}Humid
+            {% else %}Very Humid{% endif %}
+        </div>
+    </div>
+
+    <!-- Pressure -->
+    <div class="glass glass-lift rounded-2xl glow-violet" style="padding:1.25rem;">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1rem;">
+            <div style="width:40px;height:40px;border-radius:12px;background:rgba(139,92,246,0.15);display:flex;align-items:center;justify-content:center;">
+                <i class="fas fa-gauge" style="color:#a78bfa;"></i>
+            </div>
+            <span style="font-size:0.68rem;font-weight:600;color:rgba(255,255,255,0.28);text-transform:uppercase;letter-spacing:0.08em;">Pressure</span>
+        </div>
+        <div style="font-size:2.4rem;font-weight:800;color:#fff;line-height:1;margin-bottom:0.4rem;">{{ latest.pressure|floatformat:0 }}<span style="font-size:1rem;font-weight:400;color:rgba(255,255,255,0.3);"> hPa</span></div>
+        <div style="font-size:0.72rem;margin-top:0.75rem;">
+            {% if latest.pressure < 1000 %}<span style="color:#fcd34d;"><i class="fas fa-arrow-down"></i> Low pressure</span>
+            {% elif latest.pressure > 1020 %}<span style="color:#93c5fd;"><i class="fas fa-arrow-up"></i> High pressure</span>
+            {% else %}<span style="color:#6ee7b7;"><i class="fas fa-check"></i> Normal range</span>{% endif %}
+        </div>
+    </div>
+
+    <!-- Wind -->
+    <div class="glass glass-lift rounded-2xl glow-emerald" style="padding:1.25rem;">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1rem;">
+            <div style="width:40px;height:40px;border-radius:12px;background:rgba(16,185,129,0.15);display:flex;align-items:center;justify-content:center;">
+                <i class="fas fa-wind" style="color:#34d399;"></i>
+            </div>
+            <span style="font-size:0.68rem;font-weight:600;color:rgba(255,255,255,0.28);text-transform:uppercase;letter-spacing:0.08em;">Wind</span>
+        </div>
+        <div style="font-size:2.4rem;font-weight:800;color:#fff;line-height:1;margin-bottom:0.4rem;">{{ latest.wind_speed|floatformat:1 }}<span style="font-size:1rem;font-weight:400;color:rgba(255,255,255,0.3);"> km/h</span></div>
+        <div style="font-size:0.72rem;color:rgba(255,255,255,0.38);margin-top:0.75rem;display:flex;align-items:center;gap:6px;">
+            <i class="fas fa-compass" style="color:rgba(52,211,153,0.6);"></i>
+            {{ latest.wind_direction_label }} &middot; {{ latest.wind_direction|floatformat:0 }}°
+        </div>
+        <div style="font-size:0.7rem;color:rgba(255,255,255,0.28);margin-top:0.3rem;">
+            {% if latest.wind_speed < 20 %}Light breeze
+            {% elif latest.wind_speed < 40 %}Moderate
+            {% elif latest.wind_speed < 60 %}Strong wind
+            {% else %}Storm{% endif %}
+        </div>
+    </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     24H SUMMARY + RAIN
+═══════════════════════════════════════════════════ -->
+<div style="display:grid;grid-template-columns:2fr 1fr;gap:1rem;margin-bottom:1.5rem;">
+
+    <!-- 24h summary -->
+    <div class="glass rounded-2xl" style="padding:1.25rem;">
+        <div style="font-size:0.68rem;font-weight:600;color:rgba(255,255,255,0.28);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:1.25rem;">24h Temperature Summary</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;text-align:center;">
+            <div>
+                <div style="font-size:1.9rem;font-weight:700;color:#93c5fd;">{{ temp_min }}°</div>
+                <div style="font-size:0.72rem;color:rgba(255,255,255,0.3);margin-top:4px;">Minimum</div>
+            </div>
+            <div style="border-left:1px solid rgba(255,255,255,0.07);border-right:1px solid rgba(255,255,255,0.07);">
+                <div class="grad-text" style="font-size:1.9rem;font-weight:700;">{{ temp_avg }}°</div>
+                <div style="font-size:0.72rem;color:rgba(255,255,255,0.3);margin-top:4px;">Average</div>
+            </div>
+            <div>
+                <div style="font-size:1.9rem;font-weight:700;color:#fca5a5;">{{ temp_max }}°</div>
+                <div style="font-size:0.72rem;color:rgba(255,255,255,0.3);margin-top:4px;">Maximum</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rain -->
+    <div class="glass glass-lift rounded-2xl glow-rose" style="padding:1.25rem;">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1rem;">
+            <div style="width:40px;height:40px;border-radius:12px;background:rgba(244,63,94,0.15);display:flex;align-items:center;justify-content:center;">
+                <i class="fas fa-cloud-rain" style="color:#fb7185;"></i>
+            </div>
+            <span style="font-size:0.68rem;font-weight:600;color:rgba(255,255,255,0.28);text-transform:uppercase;letter-spacing:0.08em;">Rain</span>
+        </div>
+        <div style="font-size:2.4rem;font-weight:800;color:#fff;line-height:1;">{{ latest.rain|floatformat:1 }}<span style="font-size:1rem;font-weight:400;color:rgba(255,255,255,0.3);"> mm</span></div>
+        <div style="font-size:0.7rem;color:rgba(255,255,255,0.3);margin-top:0.75rem;">Current hour</div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     MAIN CHART
+═══════════════════════════════════════════════════ -->
+<div class="glass rounded-2xl" style="padding:1.5rem;margin-bottom:1.5rem;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem;">
+        <div>
+            <h2 style="font-size:0.95rem;font-weight:600;color:#fff;">24-Hour Weather Trend</h2>
+            <p style="font-size:0.75rem;color:rgba(255,255,255,0.35);margin-top:3px;">Temperature &amp; Humidity over the last 24 hours</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:20px;font-size:0.75rem;">
+            <div style="display:flex;align-items:center;gap:7px;color:rgba(255,255,255,0.45);">
+                <span style="display:inline-block;width:20px;height:2px;background:#60a5fa;border-radius:2px;"></span>Temperature
+            </div>
+            <div style="display:flex;align-items:center;gap:7px;color:rgba(255,255,255,0.45);">
+                <span style="display:inline-block;width:20px;height:2px;background:#22d3ee;border-radius:2px;"></span>Humidity
+            </div>
+        </div>
+    </div>
+    <div style="position:relative;height:300px;">
+        <canvas id="mainChart"></canvas>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     BOTTOM: ALERTS + RECENT TABLE
+═══════════════════════════════════════════════════ -->
+<div style="display:grid;grid-template-columns:2fr 3fr;gap:1rem;">
+
+    <!-- Active Alerts -->
+    <div class="glass rounded-2xl" style="padding:1.25rem;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+            <h2 style="font-size:0.85rem;font-weight:600;color:#fff;display:flex;align-items:center;gap:7px;">
+                <i class="fas fa-triangle-exclamation" style="color:#fcd34d;font-size:0.75rem;"></i>Active Alerts
+            </h2>
+            <a href="{% url 'weather_ai:alerts' %}" style="font-size:0.72rem;color:#60a5fa;text-decoration:none;">View all →</a>
+        </div>
+
+        {% if active_alerts %}
+        <div style="display:flex;flex-direction:column;gap:8px;">
+            {% for alert in active_alerts %}
+            <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);">
+                {% if alert.severity == 'critical' %}
+                <i class="fas fa-circle-xmark" style="color:#f87171;font-size:0.85rem;margin-top:2px;flex-shrink:0;"></i>
+                {% elif alert.severity == 'high' %}
+                <i class="fas fa-circle-exclamation" style="color:#fb923c;font-size:0.85rem;margin-top:2px;flex-shrink:0;"></i>
+                {% elif alert.severity == 'warning' %}
+                <i class="fas fa-triangle-exclamation" style="color:#fbbf24;font-size:0.85rem;margin-top:2px;flex-shrink:0;"></i>
+                {% else %}
+                <i class="fas fa-circle-info" style="color:#60a5fa;font-size:0.85rem;margin-top:2px;flex-shrink:0;"></i>
+                {% endif %}
+                <div style="min-width:0;flex:1;">
+                    <div style="font-size:0.78rem;font-weight:500;color:rgba(255,255,255,0.8);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ alert.title }}</div>
+                    <div style="font-size:0.68rem;color:rgba(255,255,255,0.35);margin-top:2px;">{{ alert.triggered_at|date:"H:i, d M" }}</div>
+                </div>
+                <span class="badge badge-{{ alert.severity }}" style="flex-shrink:0;">{{ alert.get_severity_display }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2.5rem 0;text-align:center;">
+            <div style="font-size:2.5rem;margin-bottom:0.75rem;">✅</div>
+            <div style="font-size:0.85rem;color:rgba(255,255,255,0.4);">No active alerts</div>
+            <div style="font-size:0.72rem;color:rgba(255,255,255,0.22);margin-top:4px;">All systems normal</div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Recent Readings Table -->
+    <div class="glass rounded-2xl" style="padding:1.25rem;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+            <h2 style="font-size:0.85rem;font-weight:600;color:#fff;display:flex;align-items:center;gap:7px;">
+                <i class="fas fa-table-list" style="color:#a78bfa;font-size:0.75rem;"></i>Recent Readings
+            </h2>
+            <a href="{% url 'weather_ai:history' %}" style="font-size:0.72rem;color:#60a5fa;text-decoration:none;">Full history →</a>
+        </div>
+        <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:0.78rem;">
+                <thead>
+                    <tr style="color:rgba(255,255,255,0.28);border-bottom:1px solid rgba(255,255,255,0.06);">
+                        <th style="text-align:left;padding-bottom:10px;font-weight:500;">Time</th>
+                        <th style="text-align:right;padding-bottom:10px;font-weight:500;">Temp</th>
+                        <th style="text-align:right;padding-bottom:10px;font-weight:500;">Humidity</th>
+                        <th style="text-align:right;padding-bottom:10px;font-weight:500;">Pressure</th>
+                        <th style="text-align:right;padding-bottom:10px;font-weight:500;">Rain</th>
+                        <th style="text-align:right;padding-bottom:10px;font-weight:500;">Wind</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in recent_readings %}
+                    <tr class="data-row">
+                        <td style="padding:9px 0;color:rgba(255,255,255,0.5);">{{ r.timestamp|date:"H:i" }}</td>
+                        <td style="padding:9px 0;text-align:right;font-weight:600;color:#93c5fd;">{{ r.temperature|floatformat:1 }}°C</td>
+                        <td style="padding:9px 0;text-align:right;color:#67e8f9;">{{ r.humidity|floatformat:0 }}%</td>
+                        <td style="padding:9px 0;text-align:right;color:#c4b5fd;">{{ r.pressure|floatformat:0 }}</td>
+                        <td style="padding:9px 0;text-align:right;color:#fda4af;">{{ r.rain|floatformat:1 }}</td>
+                        <td style="padding:9px 0;text-align:right;color:#6ee7b7;">{{ r.wind_speed|floatformat:1 }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6" style="padding:2rem;text-align:center;color:rgba(255,255,255,0.25);">No data</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% endif %}{# end if latest #}
+{% endblock %}
+
+
+{% block extra_js %}
+{% if latest %}
+<script>
+(function () {
+    const labels    = {{ chart_labels|safe }};
+    const tempData  = {{ chart_temp|safe }};
+    const humidData = {{ chart_humidity|safe }};
+
+    const canvas = document.getElementById('mainChart');
+    const ctx    = canvas.getContext('2d');
+
+    // Build gradient fills
+    const tempGrad = ctx.createLinearGradient(0, 0, 0, 300);
+    tempGrad.addColorStop(0,   'rgba(96,165,250,0.28)');
+    tempGrad.addColorStop(1,   'rgba(96,165,250,0.0)');
+
+    const humidGrad = ctx.createLinearGradient(0, 0, 0, 300);
+    humidGrad.addColorStop(0,  'rgba(34,211,238,0.2)');
+    humidGrad.addColorStop(1,  'rgba(34,211,238,0.0)');
+
+    Chart.defaults.color      = 'rgba(255,255,255,0.32)';
+    Chart.defaults.font.size  = 11;
+    Chart.defaults.font.family = 'Inter, system-ui, sans-serif';
+
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: 'Temperature (°C)',
+                    data: tempData,
+                    borderColor: '#60a5fa',
+                    backgroundColor: tempGrad,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 0,
+                    pointHoverRadius: 5,
+                    pointHoverBackgroundColor: '#60a5fa',
+                    pointHoverBorderColor: '#fff',
+                    pointHoverBorderWidth: 2,
+                    borderWidth: 2.5,
+                    yAxisID: 'y',
+                },
+                {
+                    label: 'Humidity (%)',
+                    data: humidData,
+                    borderColor: '#22d3ee',
+                    backgroundColor: humidGrad,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 0,
+                    pointHoverRadius: 5,
+                    pointHoverBackgroundColor: '#22d3ee',
+                    pointHoverBorderColor: '#fff',
+                    pointHoverBorderWidth: 2,
+                    borderWidth: 2,
+                    yAxisID: 'y1',
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { intersect: false, mode: 'index' },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: 'rgba(3,12,26,0.95)',
+                    borderColor: 'rgba(255,255,255,0.1)',
+                    borderWidth: 1,
+                    padding: 12,
+                    cornerRadius: 10,
+                    titleColor: 'rgba(255,255,255,0.65)',
+                    bodyColor:  'rgba(255,255,255,0.5)',
+                    callbacks: {
+                        label: ctx => {
+                            const unit = ctx.datasetIndex === 0 ? '°C' : '%';
+                            return ` ${ctx.dataset.label}: ${ctx.parsed.y}${unit}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    border: { display: false },
+                    grid:   { color: 'rgba(255,255,255,0.04)' },
+                    ticks:  { maxTicksLimit: 8 },
+                },
+                y: {
+                    position: 'left',
+                    border: { display: false },
+                    grid:   { color: 'rgba(255,255,255,0.04)' },
+                    ticks: {
+                        color: 'rgba(96,165,250,0.65)',
+                        callback: v => v + '°C',
+                    },
+                },
+                y1: {
+                    position: 'right',
+                    border: { display: false },
+                    grid: { drawOnChartArea: false },
+                    ticks: {
+                        color: 'rgba(34,211,238,0.65)',
+                        callback: v => v + '%',
+                    },
+                }
+            }
+        }
+    });
+}());
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block title %}Alerts{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:2rem;">
+    <h1 style="font-size:1.5rem;font-weight:700;color:#fff;margin-bottom:4px;">Weather Alerts</h1>
+    <p style="color:rgba(255,255,255,0.4);font-size:0.875rem;">Anomaly detections from Isolation Forest</p>
+</div>
+
+{% if all_alerts %}
+<div class="glass rounded-2xl" style="padding:1.25rem;">
+    <div style="display:flex;flex-direction:column;gap:8px;">
+        {% for alert in all_alerts %}
+        <div style="display:flex;align-items:flex-start;gap:12px;padding:14px 16px;border-radius:12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);">
+            {% if alert.severity == 'critical' %}
+            <i class="fas fa-circle-xmark" style="color:#f87171;font-size:1rem;margin-top:2px;flex-shrink:0;"></i>
+            {% elif alert.severity == 'high' %}
+            <i class="fas fa-circle-exclamation" style="color:#fb923c;font-size:1rem;margin-top:2px;flex-shrink:0;"></i>
+            {% elif alert.severity == 'warning' %}
+            <i class="fas fa-triangle-exclamation" style="color:#fbbf24;font-size:1rem;margin-top:2px;flex-shrink:0;"></i>
+            {% else %}
+            <i class="fas fa-circle-info" style="color:#60a5fa;font-size:1rem;margin-top:2px;flex-shrink:0;"></i>
+            {% endif %}
+            <div style="flex:1;min-width:0;">
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
+                    <span style="font-size:0.85rem;font-weight:600;color:rgba(255,255,255,0.85);">{{ alert.title }}</span>
+                    <span class="badge badge-{{ alert.severity }}">{{ alert.get_severity_display }}</span>
+                    {% if not alert.is_active %}<span class="badge" style="background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.3);">Resolved</span>{% endif %}
+                </div>
+                <p style="font-size:0.78rem;color:rgba(255,255,255,0.4);margin-bottom:6px;">{{ alert.description }}</p>
+                <div style="font-size:0.7rem;color:rgba(255,255,255,0.25);display:flex;gap:16px;">
+                    <span><i class="fas fa-clock" style="margin-right:4px;"></i>{{ alert.triggered_at|date:"d M Y, H:i" }}</span>
+                    <span><i class="fas fa-chart-scatter" style="margin-right:4px;"></i>Score: {{ alert.anomaly_score|floatformat:3 }}</span>
+                    <span>{{ alert.get_alert_type_display }}</span>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% else %}
+<div class="glass rounded-2xl" style="padding:4rem;text-align:center;">
+    <div style="font-size:3.5rem;margin-bottom:1rem;">✅</div>
+    <h2 style="font-size:1.1rem;font-weight:600;color:rgba(255,255,255,0.7);margin-bottom:0.5rem;">No alerts recorded</h2>
+    <p style="color:rgba(255,255,255,0.35);font-size:0.85rem;">Anomaly detection runs in Phase 8.</p>
+</div>
+{% endif %}
+{% endblock %}

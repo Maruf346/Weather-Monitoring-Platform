@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Weather AI{% endblock %} — Smart Weather Platform</title>
+
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <!-- Tailwind Play CDN (fine for demo/dev) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+    <style>
+        /* ── Reset & base ─────────────────────────────── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background-color: #030c1a;
+            color: #fff;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* ── Ambient background blobs ────────────────── */
+        .bg-blob-1,
+        .bg-blob-2 {
+            position: fixed;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 0;
+            animation: blobDrift 22s ease-in-out infinite;
+        }
+        .bg-blob-1 {
+            width: 700px; height: 700px;
+            top: -200px; left: -150px;
+            background: radial-gradient(circle, rgba(59,130,246,0.09) 0%, transparent 65%);
+        }
+        .bg-blob-2 {
+            width: 550px; height: 550px;
+            bottom: -180px; right: -120px;
+            background: radial-gradient(circle, rgba(139,92,246,0.07) 0%, transparent 65%);
+            animation-direction: reverse;
+            animation-duration: 28s;
+        }
+        @keyframes blobDrift {
+            0%,100% { transform: translate(0,0)   scale(1);    }
+            33%      { transform: translate(25px,-15px) scale(1.04); }
+            66%      { transform: translate(-15px,25px) scale(0.97); }
+        }
+
+        /* ── Glassmorphism card ──────────────────────── */
+        .glass {
+            background: rgba(255,255,255,0.04);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255,255,255,0.07);
+        }
+        .glass-lift {
+            transition: transform 0.25s ease, background 0.25s ease, border-color 0.25s ease;
+        }
+        .glass-lift:hover {
+            transform: translateY(-3px);
+            background: rgba(255,255,255,0.065);
+            border-color: rgba(255,255,255,0.13);
+        }
+
+        /* ── Glow shadows ────────────────────────────── */
+        .glow-blue    { box-shadow: 0 4px 36px rgba(59,130,246,0.12);  }
+        .glow-cyan    { box-shadow: 0 4px 36px rgba(6,182,212,0.12);   }
+        .glow-violet  { box-shadow: 0 4px 36px rgba(139,92,246,0.12);  }
+        .glow-emerald { box-shadow: 0 4px 36px rgba(16,185,129,0.12);  }
+        .glow-rose    { box-shadow: 0 4px 36px rgba(244,63,94,0.12);   }
+
+        /* ── Gradient text ───────────────────────────── */
+        .grad-text {
+            background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* ── Nav ─────────────────────────────────────── */
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 14px;
+            border-radius: 10px;
+            font-size: 0.825rem;
+            font-weight: 500;
+            color: rgba(255,255,255,0.45);
+            transition: all 0.2s ease;
+            text-decoration: none;
+        }
+        .nav-link:hover { color: #fff; background: rgba(255,255,255,0.06); }
+        .nav-link.active { color: #fff; background: rgba(255,255,255,0.10); }
+
+        /* ── Alert badges ────────────────────────────── */
+        .badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; font-size: 0.7rem; font-weight: 600; }
+        .badge-info     { background: rgba(59,130,246,0.18);  color: #93c5fd; border: 1px solid rgba(59,130,246,0.28); }
+        .badge-warning  { background: rgba(245,158,11,0.18);  color: #fcd34d; border: 1px solid rgba(245,158,11,0.28); }
+        .badge-high     { background: rgba(249,115,22,0.18);  color: #fdba74; border: 1px solid rgba(249,115,22,0.28); }
+        .badge-critical { background: rgba(239,68,68,0.18);   color: #fca5a5; border: 1px solid rgba(239,68,68,0.28); }
+
+        /* ── Table ───────────────────────────────────── */
+        .data-row { border-bottom: 1px solid rgba(255,255,255,0.04); transition: background 0.15s; }
+        .data-row:hover { background: rgba(255,255,255,0.04); }
+        .data-row:last-child { border-bottom: none; }
+
+        /* ── Scrollbar ───────────────────────────────── */
+        ::-webkit-scrollbar              { width: 5px; }
+        ::-webkit-scrollbar-track        { background: transparent; }
+        ::-webkit-scrollbar-thumb        { background: rgba(255,255,255,0.1); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover  { background: rgba(255,255,255,0.2); }
+
+        /* ── Progress bar ────────────────────────────── */
+        .progress-bar { height: 4px; border-radius: 4px; background: rgba(255,255,255,0.08); overflow: hidden; }
+        .progress-fill { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
+    </style>
+
+    {% block extra_css %}{% endblock %}
+</head>
+
+<body>
+    <!-- Ambient blobs -->
+    <div class="bg-blob-1"></div>
+    <div class="bg-blob-2"></div>
+
+    <!-- ── Navbar ──────────────────────────────────────── -->
+    <nav class="glass sticky top-0 z-50" style="border-bottom:1px solid rgba(255,255,255,0.07);">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between" style="height:64px;">
+
+                <!-- Brand -->
+                <a href="{% url 'weather_ai:dashboard' %}" class="flex items-center gap-3" style="text-decoration:none;">
+                    <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);box-shadow:0 4px 14px rgba(59,130,246,0.45);display:flex;align-items:center;justify-content:center;">
+                        <i class="fas fa-cloud-bolt" style="color:#fff;font-size:0.85rem;"></i>
+                    </div>
+                    <span class="grad-text" style="font-size:1rem;font-weight:800;letter-spacing:-0.02em;">Weather AI</span>
+                </a>
+
+                <!-- Links -->
+                <div style="display:flex;align-items:center;gap:4px;">
+                    <a href="{% url 'weather_ai:dashboard' %}" class="nav-link {% if page == 'dashboard' %}active{% endif %}">
+                        <i class="fas fa-gauge-high" style="font-size:0.75rem;"></i> Dashboard
+                    </a>
+                    <a href="{% url 'weather_ai:forecast' %}" class="nav-link {% if page == 'forecast' %}active{% endif %}">
+                        <i class="fas fa-chart-line" style="font-size:0.75rem;"></i> Forecast
+                    </a>
+                    <a href="{% url 'weather_ai:alerts' %}" class="nav-link {% if page == 'alerts' %}active{% endif %}">
+                        <i class="fas fa-triangle-exclamation" style="font-size:0.75rem;"></i> Alerts
+                        {% if alert_count %}
+                        <span style="background:rgba(239,68,68,0.2);color:#fca5a5;font-size:0.65rem;font-weight:700;padding:1px 6px;border-radius:999px;">{{ alert_count }}</span>
+                        {% endif %}
+                    </a>
+                    <a href="{% url 'weather_ai:history' %}" class="nav-link {% if page == 'history' %}active{% endif %}">
+                        <i class="fas fa-clock-rotate-left" style="font-size:0.75rem;"></i> History
+                    </a>
+                </div>
+
+                <!-- Live indicator -->
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <span style="position:relative;display:inline-flex;width:10px;height:10px;">
+                        <span style="position:absolute;inset:0;background:#10b981;border-radius:50%;opacity:0.7;animation:ping 1.5s cubic-bezier(0,0,0.2,1) infinite;"></span>
+                        <span style="position:relative;width:10px;height:10px;background:#10b981;border-radius:50%;display:inline-flex;"></span>
+                    </span>
+                    <span style="font-size:0.72rem;color:rgba(255,255,255,0.35);font-weight:500;">Live</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ── Page Content ──────────────────────────────── -->
+    <main class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- ── Footer ────────────────────────────────────── -->
+    <footer class="relative z-10 mt-16 py-8" style="border-top:1px solid rgba(255,255,255,0.05);">
+        <div class="max-w-7xl mx-auto px-4 text-center" style="color:rgba(255,255,255,0.22);font-size:0.72rem;">
+            Smart Weather Monitoring &amp; Predictive Alert System &nbsp;&middot;&nbsp; Open-Meteo &amp; scikit-learn
+        </div>
+    </footer>
+
+    <style>
+        @keyframes ping {
+            75%, 100% { transform: scale(2); opacity: 0; }
+        }
+    </style>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
