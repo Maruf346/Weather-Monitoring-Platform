@@ -1,6 +1,6 @@
 import json
 from django.shortcuts import render
-from weather_ai.models import WeatherReading, AlertLog
+from weather_ai.models import WeatherReading, AlertLog, ForecastResult
 from services.weather_service import get_latest_reading, get_recent_readings
 
 
@@ -93,10 +93,38 @@ def dashboard(request):
     return render(request, 'weather_ai/dashboard.html', context)
 
 
-# ── Stub views (completed in later phases) ───────────────────────────────────
+# ── Forecast ──────────────────────────────────────────────────────────────────
 
 def forecast(request):
-    return render(request, 'weather_ai/forecast.html', {'page': 'forecast'})
+    from services.forecast_service import (
+        generate_forecasts, get_latest_forecast_set,
+        needs_refresh, build_chart_data,
+    )
+
+    # Auto-regenerate when stale (>60 min old) or missing
+    refreshed = False
+    if needs_refresh(max_age_minutes=60):
+        generate_forecasts(steps=2)
+        refreshed = True
+
+    forecasts = get_latest_forecast_set()
+    readings  = list(get_recent_readings(hours=24))
+
+    chart = {}
+    if readings:
+        chart = build_chart_data(readings, forecasts)
+
+    latest_fc = ForecastResult.objects.order_by('-created_at').first()
+
+    context = {
+        'page':       'forecast',
+        'forecasts':  forecasts,
+        'latest':     get_latest_reading(),
+        'refreshed':  refreshed,
+        'latest_fc':  latest_fc,
+        **chart,
+    }
+    return render(request, 'weather_ai/forecast.html', context)
 
 
 def alerts(request):

@@ -2,16 +2,404 @@
 {% block title %}AI Forecast{% endblock %}
 
 {% block content %}
-<div style="margin-bottom:2rem;">
-    <h1 style="font-size:1.5rem;font-weight:700;color:#fff;margin-bottom:4px;">AI Weather Forecast</h1>
-    <p style="color:rgba(255,255,255,0.4);font-size:0.875rem;">ARIMA-powered predictions for the next 30 &amp; 60 minutes</p>
+
+<!-- ── Page Header ──────────────────────────────────── -->
+<div style="margin-bottom:2rem;display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
+    <div>
+        <h1 style="font-size:1.5rem;font-weight:700;color:#fff;margin-bottom:4px;">
+            <i class="fas fa-chart-line" style="color:#60a5fa;margin-right:8px;font-size:1.2rem;"></i>AI Weather Forecast
+        </h1>
+        <p style="color:rgba(255,255,255,0.4);font-size:0.85rem;">
+            ARIMA predictions for the next 1–2 hours &nbsp;·&nbsp; Auto-refreshes every 60 minutes
+        </p>
+    </div>
+    {% if latest_fc %}
+    <div style="font-size:0.75rem;color:rgba(255,255,255,0.3);text-align:right;">
+        <div style="margin-bottom:2px;">Model: <span style="color:#a78bfa;">{{ latest_fc.model_used }}</span></div>
+        <div>Generated: {{ latest_fc.created_at|date:"d M Y, H:i" }} UTC</div>
+    </div>
+    {% endif %}
 </div>
 
+{% if not forecasts %}
+<!-- No data -->
 <div class="glass rounded-2xl" style="padding:4rem;text-align:center;">
-    <div style="font-size:3.5rem;margin-bottom:1rem;">🤖</div>
-    <h2 style="font-size:1.1rem;font-weight:600;color:rgba(255,255,255,0.7);margin-bottom:0.5rem;">Forecast Engine — Coming in Phase 7</h2>
-    <p style="color:rgba(255,255,255,0.35);font-size:0.85rem;max-width:400px;margin:0 auto;">
-        ARIMA model training and 30/60-minute ahead predictions will be available once Phase 7 is complete.
-    </p>
+    <div style="font-size:3.5rem;margin-bottom:1rem;">📊</div>
+    <h2 style="font-size:1.1rem;font-weight:600;color:rgba(255,255,255,0.7);margin-bottom:0.5rem;">No forecast data</h2>
+    <p style="color:rgba(255,255,255,0.35);font-size:0.85rem;margin-bottom:1.25rem;">Run this command to train the model and generate predictions:</p>
+    <code style="background:rgba(0,0,0,0.4);color:#60a5fa;padding:10px 20px;border-radius:10px;font-family:monospace;font-size:0.85rem;">
+        python manage.py run_forecast
+    </code>
 </div>
+{% else %}
+
+<!-- ═══════════════════════════════════════════════════
+     PREDICTION CARDS: +1 HOUR
+═══════════════════════════════════════════════════ -->
+<div style="margin-bottom:1rem;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:0.75rem;">
+        <div style="width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#3b82f6,#6366f1);display:flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:700;color:#fff;">1h</div>
+        <span style="font-size:0.8rem;font-weight:600;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.06em;">Next Hour Predictions</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;">
+
+        <!-- Temperature +1h -->
+        {% with fc=forecasts.temperature.60 %}
+        <div class="glass glass-lift rounded-2xl glow-blue" style="padding:1.25rem;">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:0.9rem;">
+                <div style="width:36px;height:36px;border-radius:10px;background:rgba(59,130,246,0.15);display:flex;align-items:center;justify-content:center;">
+                    <i class="fas fa-thermometer-half" style="color:#60a5fa;"></i>
+                </div>
+                <span style="font-size:0.65rem;font-weight:600;color:rgba(255,255,255,0.28);text-transform:uppercase;letter-spacing:0.08em;">Temperature</span>
+            </div>
+            {% if fc %}
+            <div class="grad-text" style="font-size:2.6rem;font-weight:800;line-height:1;margin-bottom:0.5rem;">
+                {{ fc.predicted_value }}<span style="font-size:1.1rem;font-weight:400;color:rgba(255,255,255,0.3);">°C</span>
+            </div>
+            <div style="font-size:0.7rem;color:rgba(255,255,255,0.35);margin-bottom:0.5rem;">
+                95% CI: {{ fc.lower_bound }}° – {{ fc.upper_bound }}°
+            </div>
+            <!-- CI bar -->
+            <div style="position:relative;height:6px;background:rgba(255,255,255,0.08);border-radius:6px;overflow:hidden;">
+                {% if fc.upper_bound and fc.lower_bound %}
+                {% with range=fc.upper_bound|add:"-"|add:fc.lower_bound %}
+                <div style="position:absolute;left:30%;width:40%;height:100%;background:linear-gradient(90deg,#3b82f6,#6366f1);border-radius:6px;"></div>
+                {% endwith %}
+                {% endif %}
+            </div>
+            {% else %}
+            <div style="color:rgba(255,255,255,0.25);font-size:0.85rem;padding:0.5rem 0;">No prediction available</div>
+            {% endif %}
+        </div>
+        {% endwith %}
+
+        <!-- Humidity +1h -->
+        {% with fc=forecasts.humidity.60 %}
+        <div class="glass glass-lift rounded-2xl glow-cyan" style="padding:1.25rem;">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:0.9rem;">
+                <div style="width:36px;height:36px;border-radius:10px;background:rgba(6,182,212,0.15);display:flex;align-items:center;justify-content:center;">
+                    <i class="fas fa-droplet" style="color:#22d3ee;"></i>
+                </div>
+                <span style="font-size:0.65rem;font-weight:600;color:rgba(255,255,255,0.28);text-transform:uppercase;letter-spacing:0.08em;">Humidity</span>
+            </div>
+            {% if fc %}
+            <div style="font-size:2.6rem;font-weight:800;color:#fff;line-height:1;margin-bottom:0.5rem;">
+                {{ fc.predicted_value }}<span style="font-size:1.1rem;font-weight:400;color:rgba(255,255,255,0.3);">%</span>
+            </div>
+            <div style="font-size:0.7rem;color:rgba(255,255,255,0.35);margin-bottom:0.5rem;">
+                95% CI: {{ fc.lower_bound }}% – {{ fc.upper_bound }}%
+            </div>
+            <div class="progress-bar"><div class="progress-fill" style="width:{{ fc.predicted_value|floatformat:0 }}%;background:linear-gradient(90deg,#0891b2,#06b6d4);"></div></div>
+            {% else %}
+            <div style="color:rgba(255,255,255,0.25);font-size:0.85rem;padding:0.5rem 0;">No prediction available</div>
+            {% endif %}
+        </div>
+        {% endwith %}
+
+        <!-- Pressure +1h -->
+        {% with fc=forecasts.pressure.60 %}
+        <div class="glass glass-lift rounded-2xl glow-violet" style="padding:1.25rem;">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:0.9rem;">
+                <div style="width:36px;height:36px;border-radius:10px;background:rgba(139,92,246,0.15);display:flex;align-items:center;justify-content:center;">
+                    <i class="fas fa-gauge" style="color:#a78bfa;"></i>
+                </div>
+                <span style="font-size:0.65rem;font-weight:600;color:rgba(255,255,255,0.28);text-transform:uppercase;letter-spacing:0.08em;">Pressure</span>
+            </div>
+            {% if fc %}
+            <div style="font-size:2.6rem;font-weight:800;color:#fff;line-height:1;margin-bottom:0.5rem;">
+                {{ fc.predicted_value }}<span style="font-size:1rem;font-weight:400;color:rgba(255,255,255,0.3);"> hPa</span>
+            </div>
+            <div style="font-size:0.7rem;color:rgba(255,255,255,0.35);">
+                95% CI: {{ fc.lower_bound }} – {{ fc.upper_bound }} hPa
+            </div>
+            {% else %}
+            <div style="color:rgba(255,255,255,0.25);font-size:0.85rem;padding:0.5rem 0;">No prediction available</div>
+            {% endif %}
+        </div>
+        {% endwith %}
+
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     PREDICTION CARDS: +2 HOURS
+═══════════════════════════════════════════════════ -->
+<div style="margin-bottom:1.5rem;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:0.75rem;">
+        <div style="width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#8b5cf6,#ec4899);display:flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:700;color:#fff;">2h</div>
+        <span style="font-size:0.8rem;font-weight:600;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.06em;">Two-Hour Predictions</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;">
+
+        {% with fc=forecasts.temperature.120 %}
+        <div class="glass glass-lift rounded-2xl" style="padding:1.25rem;border-color:rgba(99,102,241,0.2);">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:0.9rem;">
+                <div style="width:36px;height:36px;border-radius:10px;background:rgba(99,102,241,0.15);display:flex;align-items:center;justify-content:center;">
+                    <i class="fas fa-thermometer-half" style="color:#818cf8;"></i>
+                </div>
+                <span style="font-size:0.65rem;font-weight:600;color:rgba(255,255,255,0.28);text-transform:uppercase;letter-spacing:0.08em;">Temperature</span>
+            </div>
+            {% if fc %}
+            <div style="font-size:2.6rem;font-weight:800;color:#818cf8;line-height:1;margin-bottom:0.5rem;">
+                {{ fc.predicted_value }}<span style="font-size:1.1rem;font-weight:400;color:rgba(255,255,255,0.3);">°C</span>
+            </div>
+            <div style="font-size:0.7rem;color:rgba(255,255,255,0.35);">
+                95% CI: {{ fc.lower_bound }}° – {{ fc.upper_bound }}°
+            </div>
+            {% else %}<div style="color:rgba(255,255,255,0.25);font-size:0.85rem;">No prediction</div>{% endif %}
+        </div>
+        {% endwith %}
+
+        {% with fc=forecasts.humidity.120 %}
+        <div class="glass glass-lift rounded-2xl" style="padding:1.25rem;border-color:rgba(99,102,241,0.2);">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:0.9rem;">
+                <div style="width:36px;height:36px;border-radius:10px;background:rgba(99,102,241,0.15);display:flex;align-items:center;justify-content:center;">
+                    <i class="fas fa-droplet" style="color:#818cf8;"></i>
+                </div>
+                <span style="font-size:0.65rem;font-weight:600;color:rgba(255,255,255,0.28);text-transform:uppercase;letter-spacing:0.08em;">Humidity</span>
+            </div>
+            {% if fc %}
+            <div style="font-size:2.6rem;font-weight:800;color:#818cf8;line-height:1;margin-bottom:0.5rem;">
+                {{ fc.predicted_value }}<span style="font-size:1.1rem;font-weight:400;color:rgba(255,255,255,0.3);">%</span>
+            </div>
+            <div style="font-size:0.7rem;color:rgba(255,255,255,0.35);">
+                95% CI: {{ fc.lower_bound }}% – {{ fc.upper_bound }}%
+            </div>
+            {% else %}<div style="color:rgba(255,255,255,0.25);font-size:0.85rem;">No prediction</div>{% endif %}
+        </div>
+        {% endwith %}
+
+        {% with fc=forecasts.pressure.120 %}
+        <div class="glass glass-lift rounded-2xl" style="padding:1.25rem;border-color:rgba(99,102,241,0.2);">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:0.9rem;">
+                <div style="width:36px;height:36px;border-radius:10px;background:rgba(99,102,241,0.15);display:flex;align-items:center;justify-content:center;">
+                    <i class="fas fa-gauge" style="color:#818cf8;"></i>
+                </div>
+                <span style="font-size:0.65rem;font-weight:600;color:rgba(255,255,255,0.28);text-transform:uppercase;letter-spacing:0.08em;">Pressure</span>
+            </div>
+            {% if fc %}
+            <div style="font-size:2.6rem;font-weight:800;color:#818cf8;line-height:1;margin-bottom:0.5rem;">
+                {{ fc.predicted_value }}<span style="font-size:1rem;font-weight:400;color:rgba(255,255,255,0.3);"> hPa</span>
+            </div>
+            <div style="font-size:0.7rem;color:rgba(255,255,255,0.35);">
+                95% CI: {{ fc.lower_bound }} – {{ fc.upper_bound }} hPa
+            </div>
+            {% else %}<div style="color:rgba(255,255,255,0.25);font-size:0.85rem;">No prediction</div>{% endif %}
+        </div>
+        {% endwith %}
+
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     FORECAST CHART
+═══════════════════════════════════════════════════ -->
+{% if all_labels %}
+<div class="glass rounded-2xl" style="padding:1.5rem;margin-bottom:1.5rem;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:1rem;">
+        <div>
+            <h2 style="font-size:0.95rem;font-weight:600;color:#fff;">Temperature: History + Forecast</h2>
+            <p style="font-size:0.75rem;color:rgba(255,255,255,0.35);margin-top:3px;">Solid line = actual &nbsp;·&nbsp; Dashed line = ARIMA prediction &nbsp;·&nbsp; Shaded = 95% confidence interval</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:20px;font-size:0.72rem;color:rgba(255,255,255,0.4);">
+            <span style="display:flex;align-items:center;gap:6px;"><span style="display:inline-block;width:18px;height:2px;background:#60a5fa;"></span>Actual</span>
+            <span style="display:flex;align-items:center;gap:6px;"><span style="display:inline-block;width:18px;height:2px;background:#a78bfa;border-top:2px dashed #a78bfa;"></span>Forecast</span>
+            <span style="display:flex;align-items:center;gap:6px;"><span style="display:inline-block;width:18px;height:10px;background:rgba(167,139,250,0.15);border-radius:3px;"></span>95% CI</span>
+        </div>
+    </div>
+    <div style="position:relative;height:320px;">
+        <canvas id="forecastChart"></canvas>
+    </div>
+</div>
+{% endif %}
+
+<!-- ═══════════════════════════════════════════════════
+     MODEL INFO
+═══════════════════════════════════════════════════ -->
+<div class="glass rounded-2xl" style="padding:1.25rem;">
+    <h2 style="font-size:0.85rem;font-weight:600;color:#fff;margin-bottom:1rem;display:flex;align-items:center;gap:8px;">
+        <i class="fas fa-robot" style="color:#a78bfa;font-size:0.8rem;"></i>Model Information
+    </h2>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;font-size:0.78rem;">
+        <div>
+            <div style="color:rgba(255,255,255,0.28);margin-bottom:4px;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.06em;">Algorithm</div>
+            <div style="color:rgba(255,255,255,0.75);font-weight:500;">ARIMA (Auto-Regressive Integrated Moving Average)</div>
+        </div>
+        <div>
+            <div style="color:rgba(255,255,255,0.28);margin-bottom:4px;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.06em;">Training Window</div>
+            <div style="color:rgba(255,255,255,0.75);font-weight:500;">Last 7 days (≈168 hourly readings)</div>
+        </div>
+        <div>
+            <div style="color:rgba(255,255,255,0.28);margin-bottom:4px;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.06em;">Forecast Horizon</div>
+            <div style="color:rgba(255,255,255,0.75);font-weight:500;">+1 hour &amp; +2 hours ahead</div>
+        </div>
+        <div>
+            <div style="color:rgba(255,255,255,0.28);margin-bottom:4px;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.06em;">Variables</div>
+            <div style="color:rgba(255,255,255,0.75);font-weight:500;">Temperature · Humidity · Pressure</div>
+        </div>
+        {% if latest_fc %}
+        <div>
+            <div style="color:rgba(255,255,255,0.28);margin-bottom:4px;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.06em;">Active Model</div>
+            <div style="color:#a78bfa;font-weight:600;">{{ latest_fc.model_used }}</div>
+        </div>
+        {% endif %}
+        <div>
+            <div style="color:rgba(255,255,255,0.28);margin-bottom:4px;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.06em;">Library</div>
+            <div style="color:rgba(255,255,255,0.75);font-weight:500;">statsmodels · scikit-learn</div>
+        </div>
+    </div>
+</div>
+
+{% endif %}{# end if forecasts #}
+{% endblock %}
+
+
+{% block extra_js %}
+{% if all_labels %}
+<script>
+(function () {
+    const allLabels  = {{ all_labels|safe }};
+    const actualData = {{ actual_data|safe }};
+    const predData   = {{ pred_data|safe }};
+    const upperData  = {{ upper_data|safe }};
+    const lowerData  = {{ lower_data|safe }};
+
+    const canvas = document.getElementById('forecastChart');
+    const ctx    = canvas.getContext('2d');
+
+    // Gradient for actual line fill
+    const actualGrad = ctx.createLinearGradient(0, 0, 0, 320);
+    actualGrad.addColorStop(0,  'rgba(96,165,250,0.22)');
+    actualGrad.addColorStop(1,  'rgba(96,165,250,0.0)');
+
+    // Gradient for confidence interval fill
+    const ciGrad = ctx.createLinearGradient(0, 0, 0, 320);
+    ciGrad.addColorStop(0,  'rgba(167,139,250,0.18)');
+    ciGrad.addColorStop(1,  'rgba(167,139,250,0.04)');
+
+    Chart.defaults.color       = 'rgba(255,255,255,0.32)';
+    Chart.defaults.font.family = 'Inter, system-ui, sans-serif';
+    Chart.defaults.font.size   = 11;
+
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: allLabels,
+            datasets: [
+                // CI upper bound (fills down to CI lower)
+                {
+                    label:           'CI Upper',
+                    data:            upperData,
+                    borderColor:     'rgba(167,139,250,0.25)',
+                    backgroundColor: ciGrad,
+                    borderWidth:     1,
+                    borderDash:      [3, 4],
+                    pointRadius:     0,
+                    fill:            '+1',   // fill down to next dataset (CI lower)
+                    tension:         0.3,
+                },
+                // CI lower bound
+                {
+                    label:           'CI Lower',
+                    data:            lowerData,
+                    borderColor:     'rgba(167,139,250,0.25)',
+                    backgroundColor: 'transparent',
+                    borderWidth:     1,
+                    borderDash:      [3, 4],
+                    pointRadius:     0,
+                    fill:            false,
+                    tension:         0.3,
+                },
+                // Actual history (solid blue, filled)
+                {
+                    label:           'Actual Temperature',
+                    data:            actualData,
+                    borderColor:     '#60a5fa',
+                    backgroundColor: actualGrad,
+                    borderWidth:     2.5,
+                    pointRadius:     0,
+                    pointHoverRadius: 5,
+                    pointHoverBackgroundColor: '#60a5fa',
+                    pointHoverBorderColor: '#fff',
+                    pointHoverBorderWidth: 2,
+                    fill:            true,
+                    tension:         0.4,
+                },
+                // Forecast extension (dashed violet)
+                {
+                    label:           'ARIMA Forecast',
+                    data:            predData,
+                    borderColor:     '#a78bfa',
+                    backgroundColor: 'transparent',
+                    borderWidth:     2.5,
+                    borderDash:      [7, 4],
+                    pointRadius:     (ctx) => {
+                        // Only show points for the 2 predicted values (non-null after anchor)
+                        const v = predData[ctx.dataIndex];
+                        const prev = predData[ctx.dataIndex - 1];
+                        return (v !== null && prev !== null && ctx.dataIndex > 0) ? 6 : 0;
+                    },
+                    pointBackgroundColor: '#a78bfa',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    fill:            false,
+                    tension:         0.3,
+                },
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { intersect: false, mode: 'index' },
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top',
+                    align: 'end',
+                    labels: {
+                        color: 'rgba(255,255,255,0.4)',
+                        boxWidth: 12,
+                        boxHeight: 2,
+                        padding: 16,
+                        font: { size: 11 },
+                        filter: (item) => !['CI Upper', 'CI Lower'].includes(item.text),
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(3,12,26,0.95)',
+                    borderColor: 'rgba(255,255,255,0.1)',
+                    borderWidth: 1,
+                    padding: 12,
+                    cornerRadius: 10,
+                    titleColor: 'rgba(255,255,255,0.65)',
+                    bodyColor:  'rgba(255,255,255,0.5)',
+                    filter: (item) => !['CI Upper', 'CI Lower'].includes(item.dataset.label),
+                    callbacks: {
+                        label: ctx => {
+                            if (ctx.parsed.y === null) return null;
+                            return ` ${ctx.dataset.label}: ${ctx.parsed.y}°C`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    border: { display: false },
+                    grid:   { color: 'rgba(255,255,255,0.04)' },
+                    ticks:  { maxTicksLimit: 10 },
+                },
+                y: {
+                    border: { display: false },
+                    grid:   { color: 'rgba(255,255,255,0.04)' },
+                    ticks: {
+                        color: 'rgba(96,165,250,0.7)',
+                        callback: v => v + '°C',
+                    },
+                },
+            }
+        }
+    });
+}());
+</script>
+{% endif %}
 {% endblock %}
