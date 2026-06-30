@@ -1,5 +1,6 @@
 import json
 from django.shortcuts import render
+from django.utils import timezone
 from weather_ai.models import WeatherReading, AlertLog, ForecastResult
 from services.weather_service import get_latest_reading, get_recent_readings
 
@@ -158,8 +159,57 @@ def alerts(request):
 
 
 def history(request):
-    readings = WeatherReading.objects.order_by('-timestamp')[:100]
-    return render(request, 'weather_ai/history.html', {
-        'page':     'history',
-        'readings': readings,
-    })
+    from datetime import timedelta
+
+    range_param = request.GET.get('range', '7d')
+    range_map   = {'24h': 1, '7d': 7, '30d': 30}
+    days        = range_map.get(range_param, 7)
+    cutoff      = timezone.now() - timedelta(days=days)
+
+    readings = list(
+        WeatherReading.objects.filter(timestamp__gte=cutoff).order_by('timestamp')
+    )
+
+    # ── Stats ─────────────────────────────────────────
+    stats = {}
+    if readings:
+        temps     = [r.temperature for r in readings]
+        humids    = [r.humidity    for r in readings]
+        pressures = [r.pressure    for r in readings]
+        rains     = [r.rain        for r in readings]
+        winds     = [r.wind_speed  for r in readings]
+        stats = {
+            'temp':     {'min': round(min(temps), 1),     'max': round(max(temps), 1),     'avg': round(sum(temps)/len(temps), 1)},
+            'humidity': {'min': round(min(humids), 0),    'max': round(max(humids), 0),    'avg': round(sum(humids)/len(humids), 1)},
+            'pressure': {'min': round(min(pressures), 0), 'max': round(max(pressures), 0), 'avg': round(sum(pressures)/len(pressures), 1)},
+            'rain':     {'total': round(sum(rains), 1),   'max': round(max(rains), 1)},
+            'wind':     {'max': round(max(winds), 1),     'avg': round(sum(winds)/len(winds), 1)},
+        }
+
+    # ── Chart (downsample to ≤ 120 pts) ──────────────
+    step    = max(1, len(readings) // 120)
+    sampled = readings[::step]
+    fmt     = '%d/%m %H:%M' if days > 1 else '%H:%M'
+
+    chart_labels   = json.dumps([r.timestamp.strftime(fmt) for r in sampled])
+    chart_temp     = json.dumps([round(r.temperature, 1)  for r in sampled])
+    chart_humidity = json.dumps([round(r.humidity, 1)     for r in sampled])
+    chart_pressure = json.dumps([round(r.pressure, 1)     for r in sampled])
+    chart_rain     = json.dumps([round(r.rain, 2)         for r in sampled])
+    chart_wind     = json.dumps([round(r.wind_speed, 1)   for r in sampled])
+
+    context = {
+        'page':           'history',
+        'range_param':    range_param,
+        'range_choices':  [('24h', 'Last 24h'), ('7d', 'Last 7 days'), ('30d', 'Last 30 days')],
+        'total':          len(readings),
+        'stats':          stats,
+        'readings':       list(reversed(readings))[:100],   # table: newest first
+        'chart_labels':   chart_labels,
+        'chart_temp':     chart_temp,
+        'chart_humidity': chart_humidity,
+        'chart_pressure': chart_pressure,
+        'chart_rain':     chart_rain,
+        'chart_wind':     chart_wind,
+    }
+    return render(request, 'weather_ai/history.html', context)
